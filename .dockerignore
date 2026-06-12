@@ -1,0 +1,14 @@
+.git
+.idea
+.vscode
+.zed
+.nova
+.cursor
+.codex
+node_modules
+vendor
+.env
+.env.*
+!.env.example
+.phpunit.result.cache
+.phpunit.cache
