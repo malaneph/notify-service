@@ -1,0 +1,230 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Notification Service API",
+        "description": "API for dispatching SMS and email notifications to users and receiving delivery status webhooks from notification providers.",
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "http://localhost:8000",
+            "description": "Notification Service API server"
+        }
+    ],
+    "paths": {
+        "/api/notifications/send": {
+            "post": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Send a notification",
+                "description": "Queues a notification for delivery to the given recipients over the requested channel.",
+                "operationId": "sendNotification",
+                "parameters": [
+                    {
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "description": "Unique key identifying this request. Replaying the same key returns the original response without re-sending the notification.",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "example": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SendNotificationRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Notification accepted and queued for delivery"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                }
+            }
+        },
+        "/api/webhooks/sms/{referenceId}": {
+            "post": {
+                "tags": [
+                    "Webhooks"
+                ],
+                "summary": "SMS provider delivery webhook",
+                "description": "Receives delivery status updates for a previously sent SMS notification.",
+                "operationId": "smsDeliveryWebhook",
+                "parameters": [
+                    {
+                        "name": "referenceId",
+                        "in": "path",
+                        "description": "ID of the notification this receipt applies to.",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WebhookReceiptRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Receipt processed"
+                    },
+                    "404": {
+                        "description": "Notification not found"
+                    }
+                }
+            }
+        },
+        "/api/webhooks/email/{referenceId}": {
+            "post": {
+                "tags": [
+                    "Webhooks"
+                ],
+                "summary": "Email provider delivery webhook",
+                "description": "Receives delivery status updates for a previously sent email notification.",
+                "operationId": "emailDeliveryWebhook",
+                "parameters": [
+                    {
+                        "name": "referenceId",
+                        "in": "path",
+                        "description": "ID of the notification this receipt applies to.",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WebhookReceiptRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "Receipt processed"
+                    },
+                    "404": {
+                        "description": "Notification not found"
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "WebhookReceiptRequest": {
+                "title": "Webhook Receipt Request",
+                "description": "Delivery status receipt sent by a notification provider for a previously sent notification.",
+                "properties": {
+                    "status": {
+                        "description": "The delivery status reported by the provider.",
+                        "type": "string",
+                        "example": "delivered",
+                        "enum": [
+                            "sent",
+                            "failed",
+                            "pending",
+                            "delivered"
+                        ]
+                    },
+                    "error": {
+                        "description": "Error message reported by the provider, if delivery failed.",
+                        "type": "string",
+                        "example": null,
+                        "nullable": true
+                    }
+                },
+                "type": "object"
+            },
+            "SendNotificationRequest": {
+                "title": "Send Notification Request",
+                "description": "Payload for dispatching a notification to one or more recipients.",
+                "required": [
+                    "priority",
+                    "channel",
+                    "recipients",
+                    "message"
+                ],
+                "properties": {
+                    "priority": {
+                        "description": "Determines the queue the notification job is dispatched to (high => critical, medium => default, low => bulk).",
+                        "type": "string",
+                        "example": "high",
+                        "enum": [
+                            "high",
+                            "medium",
+                            "low"
+                        ]
+                    },
+                    "channel": {
+                        "description": "The delivery channel used to send the notification.",
+                        "type": "string",
+                        "example": "sms",
+                        "enum": [
+                            "sms",
+                            "email"
+                        ]
+                    },
+                    "recipients": {
+                        "description": "IDs of the users to notify.",
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        },
+                        "example": [
+                            1,
+                            2,
+                            3
+                        ]
+                    },
+                    "message": {
+                        "description": "The notification message body.",
+                        "type": "string",
+                        "example": "Your verification code is 123456"
+                    },
+                    "idempotency_key": {
+                        "description": "Optional client-provided key used to safely retry the request without sending duplicate notifications.",
+                        "type": "string",
+                        "example": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+                        "nullable": true,
+                        "maxLength": 255
+                    }
+                },
+                "type": "object"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Notifications",
+            "description": "Notifications"
+        },
+        {
+            "name": "Webhooks",
+            "description": "Webhooks"
+        }
+    ]
+}

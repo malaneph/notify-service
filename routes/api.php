@@ -18,6 +18,6 @@ Route::prefix('/notifications')
 Route::prefix('/webhooks')
     ->controller(WebhookController::class)
     ->group(function () {
-        Route::post('/sms', 'sms');
-        Route::post('/email', 'email');
+        Route::post('/sms/{referenceId}', 'sms');
+        Route::post('/email/{referenceId}', 'email');
     });
